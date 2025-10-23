@@ -3,12 +3,8 @@ import machine
 import max7219
 import framebuf
 import time
-from wi_fi import wifi
-import uasyncio as asyncio
-import settings
-import gc
+from wi_fi import connect_wifi, wifi
 
-settings.load_settings()
 
 # VCC - >3.3V
 # DIN -> 23
@@ -18,39 +14,10 @@ settings.load_settings()
 spi = SPI(1, baudrate=10000000, polarity=0, phase=0, sck=Pin(18), mosi=Pin(23))
 cs = Pin(5, Pin.OUT)
 display = max7219.Matrix8x8(spi, cs, 4)
-display.brightness(settings.display_brightness)
+display.brightness(0)
 display.fill(0)
-display.show()
 
-def set_brightness(b):
-    b = max(0, min(7, b))
-    settings.display_brightness = b
-    display.brightness(b)
-    settings.save_settings()
-
-def set_timezone(offset):
-    settings.TIMEZONE_OFFSET = offset
-    settings.save_settings()
-
-def get_brightness():
-    return settings.display_brightness
-
-def get_timezone():
-    return settings.TIMEZONE_OFFSET
-
-def set_scroll_speed(speed):
-    settings.SCROLL_SPEED = max(0.01, min(0.2, speed))
-    settings.save_settings()
-
-def get_scroll_speed():
-    return settings.SCROLL_SPEED
-
-def set_animation_delay(delay):
-    settings.ANIMATION_DELAY = max(0.05, min(0.5, delay))
-    settings.save_settings()
-
-def get_animation_delay():
-    return settings.ANIMATION_DELAY
+TIMEZONE_OFFSET = -6
 
 font8x8_digits = {
     '5': [252, 192, 248, 12, 12, 204, 120, 0],
@@ -100,9 +67,7 @@ def show_text_mixed(display, text, x=0, y=0):
     display.show()
 
 
-def scroll_text(display, msg, speed=None):
-    if speed is None:
-        speed = settings.SCROLL_SPEED
+def scroll_text(display, msg, speed=0.1):
     display_width = display.num * 8
     text_width = 0
     for ch in msg:
@@ -132,7 +97,7 @@ def scroll_text(display, msg, speed=None):
                                 display.pixel(x+col, row, 1)
                 x += letter_width
         display.show()
-        await asyncio.sleep(speed)
+        time.sleep(speed)
 
 
 def show_digit(display, digit, x, y):
@@ -159,7 +124,7 @@ def textsize(txt):
 def get_local_time():
     t = machine.RTC().datetime()  # (year, month, day, weekday, hour, min, sec, ms)
     utc_seconds = time.mktime((t[0], t[1], t[2], t[4], t[5], t[6], 0, 0))
-    local_seconds = utc_seconds + settings.TIMEZONE_OFFSET * 3600
+    local_seconds = utc_seconds + TIMEZONE_OFFSET * 3600
     lt = time.localtime(local_seconds)
     return (lt[0], lt[1], lt[2], (lt[6]+1)%7, lt[3], lt[4], lt[5], 0)
 
@@ -174,7 +139,7 @@ def get_day():
     return f"{month_str} {day:02d} {weekday_str}"
 
 
-async def animate_clock(display, new_time, old_time='', aligning=0):
+def animate_clock(display, new_time, old_time='', aligning=0):
     digits_new = list(new_time)
 
     # add old time with spaces to match length
@@ -201,7 +166,7 @@ async def animate_clock(display, new_time, old_time='', aligning=0):
             else:
                 show_digit(display, d_new, x_positions[idx], 0)
         display.show()
-        await asyncio.sleep(settings.ANIMATION_DELAY)
+        time.sleep(1 / ANIMATION_STEPS)
 
     # Final frame
     display.fill(0)
@@ -211,48 +176,58 @@ async def animate_clock(display, new_time, old_time='', aligning=0):
     
 
 
-async def clock_loop():
-    temp = ''
-    last_scroll_minute = -1
-    
-    # --- clock hello ---
+if connect_wifi():
     ip = wifi.ifconfig()[0]
-    text = "H ello " + "    " + ip
-    await scroll_text(display, text)
-    display.fill(0)
-    display.show()
+    print("IP:", ip)
+else:
+    print("Failed to connect.")
+    
+# --- clock hello ---
+text = "H ello " + "    " + ip
+scroll_text(display, text, 0.05)
+display.show()
+time.sleep(0.5)
 
-    while True:
-        t = get_local_time()
-        current_time = "{:02d}:{:02d}".format(t[4], t[5])
-        sec = t[6]
-        minute = t[5]
+# --- clear the screen before starting the clock ---
+display.fill(0)
+display.show()
 
-        tw = ((32 - textsize(current_time)) + 1) // 2
 
-        # blinking :
-        clock_str = current_time if sec % 2 == 0 else current_time.replace(':', '`')
+temp = ''
+last_sec = -1
+last_scroll_minute = -1
 
-        # Show the date every 3 minutes at 17 second
-        if (minute % 3 == 0) and (sec == 17) and (last_scroll_minute != minute):
-            display.fill(0)
-            display.show()
-            day_text = get_day()
-            await scroll_text(display, day_text + "   ")
-            display.fill(0)
-            display.show()
-            last_scroll_minute = minute
-            temp = ''
-            await asyncio.sleep(0.1)
-            continue
+while True:
+    t = get_local_time()
+    current_time = "{:02d}:{:02d}".format(t[4], t[5])
+    sec = t[6]
+    minute = t[5]
+
+    tw = ((32 - textsize(current_time)) + 1) // 2
+
+    # blinking :
+    if sec % 2 == 0:
+        clock_str = current_time
+    else:
+        clock_str = current_time.replace(':', '`')
         
-        # cleanup memory every min
-        if sec == 0: 
-            import gc
-            gc.collect()
+    # --- Show the date every 3 minutes at 17 seconds ---
+    if (minute % 3 == 0) and (sec == 17) and (last_scroll_minute != minute):
+    #if (sec == 17) and (last_scroll_minute != minute):
+        display.fill(0)
+        display.show()
+        day_text = get_day()
+        scroll_text(display, day_text + "   ", 0.05)
+        display.fill(0)
+        display.show()
+        last_scroll_minute = minute
+        temp = ''  
+        continue  
 
-        if clock_str != temp:
-            await animate_clock(display, clock_str, old_time=temp, aligning=tw)
-            temp = clock_str
+    # If the time has changed (any number)
+    if clock_str != temp:
+        animate_clock(display, clock_str, old_time=temp, aligning=tw)
+        temp = clock_str
 
-        await asyncio.sleep(0.1)
+    time.sleep(0.1)
+    

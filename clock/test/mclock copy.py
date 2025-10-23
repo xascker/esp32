@@ -38,19 +38,6 @@ def get_brightness():
 def get_timezone():
     return settings.TIMEZONE_OFFSET
 
-def set_scroll_speed(speed):
-    settings.SCROLL_SPEED = max(0.01, min(0.2, speed))
-    settings.save_settings()
-
-def get_scroll_speed():
-    return settings.SCROLL_SPEED
-
-def set_animation_delay(delay):
-    settings.ANIMATION_DELAY = max(0.05, min(0.5, delay))
-    settings.save_settings()
-
-def get_animation_delay():
-    return settings.ANIMATION_DELAY
 
 font8x8_digits = {
     '5': [252, 192, 248, 12, 12, 204, 120, 0],
@@ -100,9 +87,7 @@ def show_text_mixed(display, text, x=0, y=0):
     display.show()
 
 
-def scroll_text(display, msg, speed=None):
-    if speed is None:
-        speed = settings.SCROLL_SPEED
+def scroll_text(display, msg, speed=0.1):
     display_width = display.num * 8
     text_width = 0
     for ch in msg:
@@ -174,7 +159,7 @@ def get_day():
     return f"{month_str} {day:02d} {weekday_str}"
 
 
-async def animate_clock(display, new_time, old_time='', aligning=0):
+def animate_clock(display, new_time, old_time='', aligning=0):
     digits_new = list(new_time)
 
     # add old time with spaces to match length
@@ -201,7 +186,7 @@ async def animate_clock(display, new_time, old_time='', aligning=0):
             else:
                 show_digit(display, d_new, x_positions[idx], 0)
         display.show()
-        await asyncio.sleep(settings.ANIMATION_DELAY)
+        await asyncio.sleep(1 / ANIMATION_STEPS)
 
     # Final frame
     display.fill(0)
@@ -218,7 +203,7 @@ async def clock_loop():
     # --- clock hello ---
     ip = wifi.ifconfig()[0]
     text = "H ello " + "    " + ip
-    await scroll_text(display, text)
+    await scroll_text(display, text, 0.05)
     display.fill(0)
     display.show()
 
@@ -238,7 +223,7 @@ async def clock_loop():
             display.fill(0)
             display.show()
             day_text = get_day()
-            await scroll_text(display, day_text + "   ")
+            await scroll_text(display, day_text + "   ", 0.05)
             display.fill(0)
             display.show()
             last_scroll_minute = minute
