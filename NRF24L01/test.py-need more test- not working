@@ -1,0 +1,48 @@
+import sys
+import struct
+import utime
+from machine import Pin, SPI, SoftSPI
+from nrf24l01 import NRF24L01
+from micropython import const
+
+# Responder pause between receiving data and checking for further packets.
+_RX_POLL_DELAY = const(15)
+#_RX_POLL_DELAY = const(50)
+
+# Responder pauses an additional _RESPONER_SEND_DELAY ms after receiving data and before
+# transmitting to allow the (remote) initiator time to get into receive mode. The
+# initiator may be a slow device. Value tested with Pyboard, ESP32 and ESP8266.
+_RESPONDER_SEND_DELAY = const(10)
+#_RESPONDER_SEND_DELAY = const(20)
+
+spi = SoftSPI(sck=Pin(25), mosi=Pin(33), miso=Pin(32))
+cfg = {"spi": spi, "csn": 26, "ce": 27}
+
+csn = Pin(cfg["csn"], mode=Pin.OUT, value=1)
+ce = Pin(cfg["ce"], mode=Pin.OUT, value=0)
+spi = cfg["spi"]
+nrf = NRF24L01(spi, csn, ce, payload_size=8)
+
+
+pipes = (b"\xe1\xf0\xf0\xf0\xf0", b"\xd2\xf0\xf0\xf0\xf0")
+
+# Сканирование всех доступных каналов (0-125)
+for channel in range(0, 126):
+    nrf.stop_listening()
+    #print(f"Слушаю на канале {channel}")
+    # Устанавливаем канал
+    nrf.set_channel(channel)
+    
+    # Настраиваем RX канал
+    #nrf.open_rx_pipe(1, pipes[0])  # Используем тот же TX адрес для простоты
+    
+    # Начинаем слушать на указанном канале
+    nrf.start_listening()
+    
+    # Проверяем поступающие данные
+    if nrf.any():  # Проверяем наличие данных
+        data = nrf.recv()  # Принимаем данные
+        print(f"Received data on channel {channel}: {data}")
+    
+    # Задержка между прослушиванием разных каналов
+    utime.sleep_ms(_RX_POLL_DELAY + _RESPONDER_SEND_DELAY)

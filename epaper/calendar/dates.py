@@ -1,0 +1,27 @@
+
+x_dates = {
+    ("Jan", 1): "Happy New Year!",
+    ("Jan", 9): "Julia's birthday",
+    ("Feb", 19): "Happy birthday!",
+    ("May", 17): "Tatiana's birthday",
+    ("May", 28): "Maxim's birthday",
+    ("Jun", 1): "Oksana's birthday",
+    ("Jun", 9): "kum Seryoga's birthday",
+    ("Jun", 30): "Tescha's birthday",
+    ("Jul", 1): "Lesha's birthday",
+    ("Jul", 7): "Zhenya's birthday",
+    ("Jul", 11): "Pavlik's birthday",
+    ("Jul", 15): "Valera's birthday",
+    ("Aug", 2): "Alena's birthday",
+    ("Aug", 4): "Nikita's birthday",
+    ("Sep", 26): "Masha's birthday",
+    ("Oct", 10): "Lenya's birthday",
+    ("Oct", 27): "Grandfather's birthday",
+    ("Nov", 4): "Mom's birthday",
+    ("Dec", 2): "Andrey's birthday",
+    ("Dec", 10): "Sashka's birthday",
+    ("Dec", 16): "Wedding",
+    ("Dec", 18): "Anya's birthday",
+    ("Dec", 25): "Merry Christmas!",
+    ("Dec", 31): "Happy holiday!"
+}
