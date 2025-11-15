@@ -119,6 +119,26 @@ def _schedule_fade():
         fade_out()     
         is_strip_on = False
     fade_thread_running = False
+
+def fade_out():
+    """Smooth fade out of the whole LED strip."""
+    global np, sensor_01_state, sensor_02_state
+    steps = 50  # number of fade steps
+    sensor_01_state = False
+    sensor_02_state = False
+    for step in range(steps, 0, -1):
+        factor = step / steps
+        for i in range(NUM_LED):
+            r, g, b = COLOR
+            np[i] = (int(r * BRIGHTNESS * factor),
+                     int(g * BRIGHTNESS * factor),
+                     int(b * BRIGHTNESS * factor))
+        np.write()
+        time.sleep(0.04)
+
+    for i in range(NUM_LED):
+        np[i] = (0,0,0)
+    np.write()
     
 def light_leds_block():
     global led_state, is_strip_on
@@ -154,15 +174,15 @@ def fade_off_blockwise():
     for stair in range(NUM_STAIRS):
         start = stair * LED_BLOCK
         end = start + LED_BLOCK
-        # создаём временный буфер
+        # create a temporary buffer
         temp_np = [led_state[i] for i in range(NUM_LED)]
-        # гасим только текущий блок
+        # we off only the current block
         for i in range(start, end):
             if i < NUM_LED:
                 temp_np[i] = (0,0,0)
-                led_state[i] = (0,0,0)  # обновляем основное состояние
+                led_state[i] = (0,0,0)  # updating the main state
 
-        # записываем буфер на ленту
+        # write the buffer to strip
         for i in range(NUM_LED):
             np[i] = temp_np[i]
 
@@ -172,7 +192,7 @@ def fade_off_blockwise():
 def fade_off_blockwise_reverse():
     global led_state, is_strip_on
     is_strip_on = False
-    for stair in range(NUM_STAIRS-1, -1, -1):  # обратный порядок
+    for stair in range(NUM_STAIRS-1, -1, -1): 
         start = stair * LED_BLOCK
         end = start + LED_BLOCK
 
@@ -185,58 +205,48 @@ def fade_off_blockwise_reverse():
             
         np.write()
         time.sleep(ANIMATION_SPEED)
-
-def fade_out():
-    """Smooth fade out of the whole LED strip."""
-    global np, sensor_01_state, sensor_02_state
-    steps = 50  # number of fade steps
-    sensor_01_state = False
-    sensor_02_state = False
-    for step in range(steps, 0, -1):
-        factor = step / steps
-        for i in range(NUM_LED):
-            r, g, b = COLOR
-            np[i] = (int(r * BRIGHTNESS * factor),
-                     int(g * BRIGHTNESS * factor),
-                     int(b * BRIGHTNESS * factor))
-        np.write()
-        time.sleep(0.04)
-
-    # final off
-    for i in range(NUM_LED):
-        np[i] = (0,0,0)
-    np.write()
 # ----------
 # ---------- Sensors ----------
 
 def sensor_01():
-    global sensor_01_state, sensor_02_state, is_strip_on
-    if sensor_02_state:
+    global sensor_01_state, sensor_02_state, is_strip_on, fade_thread_02_running
+    
+    if is_strip_on == "PROCESSING":
+        return
+    
+    if sensor_02_state and is_strip_on:
+        is_strip_on = "PROCESSING"
         sensor_02_state = False
         _thread.start_new_thread(_delayed_fade, (fade_off_blockwise_reverse, SENSOR_FADE_DELAY)) # Don't turn it off right away, let others pass if there are a lot of people
         #fade_off_blockwise_reverse()
     else:
-        if is_strip_on == False:
+        if not is_strip_on:
             sensor_01_state = True
             light_leds_block()
     
 def sensor_02():
-    global sensor_01_state, sensor_02_state, is_strip_on
-    if sensor_01_state:
+    global sensor_01_state, sensor_02_state, is_strip_on, fade_thread_01_running
+    
+    if is_strip_on == "PROCESSING":
+        return
+    
+    if sensor_01_state and is_strip_on:
+        is_strip_on = "PROCESSING"
         sensor_01_state = False
         _thread.start_new_thread(_delayed_fade, (fade_off_blockwise, SENSOR_FADE_DELAY))
         #fade_off_blockwise()
     else:
-        if is_strip_on == False:
+        if not is_strip_on:
             sensor_02_state = True
             light_leds_block_reverse()
 
 
+
 def _delayed_fade(func, delay=20):
     global is_strip_on
-    is_strip_on = False
     time.sleep(delay)
     func()
+    is_strip_on = False
 # ----------
     
 #light_leds_block()
