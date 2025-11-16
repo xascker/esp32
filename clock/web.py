@@ -4,24 +4,128 @@ import mclock
 
 HTML = """<!DOCTYPE html>
 <html>
+<head>
+<title>ESP32 Clock Control</title>
+<style>
+  body {{
+    font-family: Arial, Helvetica, sans-serif;
+    background: #111;
+    color: #eaeaea;
+    margin: 0;
+    padding: 20px;
+  }}
+
+  h1 {{
+    text-align: center;
+    margin-bottom: 20px;
+  }}
+
+  form {{
+    width: 100%;
+    max-width: 480px;
+    margin: auto;
+    background: #1b1b1b;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 0 10px #0006;
+  }}
+
+  .settings-table {{
+    width: 100%;
+    border-collapse: collapse;
+  }}
+
+  .settings-table td {{
+    padding: 8px 10px;
+    vertical-align: middle;
+  }}
+
+  .settings-table td.label {{
+    width: 50%;
+    text-align: right;
+    font-weight: bold;
+    padding-right: 12px;
+  }}
+
+  .settings-table td.input {{
+    width: 50%;
+  }}
+
+  .settings-table input[type="number"] {{
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #444;
+    border-radius: 6px;
+    background: #222;
+    color: #eee;
+  }}
+
+  input[type="submit"] {{
+    margin-top: 12px;
+    padding: 10px 16px;
+    font-size: 15px;
+    font-weight: bold;
+    border-radius: 6px;
+    cursor: pointer;
+    border: none;
+    color: #fff;
+    background: #0066cc;
+    width: 100%;
+  }}
+
+  input[type="submit"]:hover {{
+    opacity: 0.85;
+  }}
+
+  .status-box {{
+    width: 100%;
+    max-width: 480px;
+    margin: 20px auto;
+    background: #1b1b1b;
+    padding: 16px;
+    border-radius: 12px;
+    box-shadow: 0 0 10px #0006;
+  }}
+
+  .status-box p {{
+    margin: 6px 0;
+  }}
+</style>
+</head>
+
 <body>
 <h1>ESP32 Clock Control</h1>
+
 <form method="GET">
-Brightness (0-7): <input type="number" name="brightness" min="0" max="7" value="{brightness}">
-<br><br>
-Timezone (-12..14): <input type="number" name="timezone" min="-12" max="14" value="{timezone}">
-<br><br>
-Animation Delay (0.05..0.5): <input type="number" step="0.01" name="animation" min="0.05" max="0.5" value="{animation}">
-<br><br>
-Scroll Speed (0.01..0.2): <input type="number" step="0.01" name="scroll" min="0.01" max="0.2" value="{scroll}">
-<br><br>
+<table class="settings-table">
+  <tr>
+    <td class="label">Brightness (0-7):</td>
+    <td class="input"><input type="number" name="brightness" min="0" max="7" value="{brightness}"></td>
+  </tr>
+  <tr>
+    <td class="label">Timezone (-12..14):</td>
+    <td class="input"><input type="number" name="timezone" min="-12" max="14" value="{timezone}"></td>
+  </tr>
+  <tr>
+    <td class="label">Animation Delay (0.05..0.5):</td>
+    <td class="input"><input type="number" step="0.01" name="animation" min="0.05" max="0.5" value="{animation}"></td>
+  </tr>
+  <tr>
+    <td class="label">Scroll Speed (0.01..0.2):</td>
+    <td class="input"><input type="number" step="0.01" name="scroll" min="0.01" max="0.2" value="{scroll}"></td>
+  </tr>
+</table>
+
 <input type="submit" value="Apply">
 </form>
-<br><br>
+
+<div class="status-box">
 <p>Current Brightness: {brightness}</p>
 <p>Current Timezone: {timezone}</p>
 <p>Animation Delay: {animation}</p>
 <p>Scroll Speed: {scroll}</p>
+</div>
+
 </body>
 </html>
 """
