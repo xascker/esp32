@@ -1,8 +1,13 @@
 import time
 import _thread
 from machine import Pin
+from machine import Timer
 import neopixel
 import json
+from hc_sr04 import HCSR04
+
+sensor_01_device = HCSR04(trigger_pin=5, echo_pin=19)
+sensor_02_device = HCSR04(trigger_pin=17, echo_pin=16)
 
 # ---------- COLORS ----------
 RED     = (255,   0,   0)
@@ -30,10 +35,12 @@ ANIMATION_SPEED = 0.1
 AUTO_OFF_DELAY = 20
 SENSOR_FADE_DELAY = 20
 
+THRESHOLD = 10 
+
 # ---------- LOAD / SAVE SETTINGS ----------
 def load_settings():
     global NUM_STAIRS, LED_BLOCK, NUM_LED
-    global BRIGHTNESS, COLOR, COLOR_NAME
+    global BRIGHTNESS, COLOR, COLOR_NAME, THRESHOLD
     global ANIMATION_SPEED, AUTO_OFF_DELAY, SENSOR_FADE_DELAY
 
     try:
@@ -50,6 +57,7 @@ def load_settings():
         ANIMATION_SPEED = data.get("ANIMATION_SPEED", ANIMATION_SPEED)
         AUTO_OFF_DELAY = data.get("AUTO_OFF_DELAY", AUTO_OFF_DELAY)
         SENSOR_FADE_DELAY = data.get("SENSOR_FADE_DELAY", SENSOR_FADE_DELAY)
+        THRESHOLD = data.get("THRESHOLD", THRESHOLD)
 
         # Map color name → RGB
         COLOR = {
@@ -73,7 +81,8 @@ def save_settings():
         "COLOR_NAME": COLOR_NAME,
         "ANIMATION_SPEED": ANIMATION_SPEED,
         "AUTO_OFF_DELAY": AUTO_OFF_DELAY,
-        "SENSOR_FADE_DELAY": SENSOR_FADE_DELAY
+        "SENSOR_FADE_DELAY": SENSOR_FADE_DELAY,
+        "THRESHOLD": THRESHOLD
     }
     try:
         with open(SETTINGS_FILE, "w") as f:
@@ -94,34 +103,42 @@ np = neopixel.NeoPixel(Pin(PIN_NUM), NUM_LED)
 # ----------
 is_strip_on = False
 fade_thread_running = False
-auto_off_enabled = False
+auto_off_timer = None
 led_state = [(0,0,0)] * NUM_LED
 sensor_01_state = False
 sensor_02_state = False
 
 def start_auto_off_timer():
-    global fade_thread_running
-    if AUTO_OFF_DELAY <= 0:
+    global auto_off_timer, is_strip_on
+    if AUTO_OFF_DELAY <= 0 or not is_strip_on:
         return
-    if fade_thread_running:
-        return
-    fade_thread_running = True
-    try:
-        _thread.start_new_thread(_schedule_fade, ())
-    except Exception as e:
-        print("Failed to start fade thread:", e)
 
-def _schedule_fade():
-    """Fade out LEDs after AUTO_OFF_DELAY seconds."""
-    global fade_thread_running, is_strip_on
-    time.sleep(AUTO_OFF_DELAY)
-    if is_strip_on:
-        fade_out()     
-        is_strip_on = False
-    fade_thread_running = False
+    # cancel old timer if exists
+    if auto_off_timer is not None:
+        auto_off_timer.deinit()
+        auto_off_timer = None
+
+    # create new one-shot timer
+    auto_off_timer = Timer(0) 
+    auto_off_timer.init(
+        period=AUTO_OFF_DELAY*1000,
+        mode=Timer.ONE_SHOT,
+        callback=lambda t: fade_out_wrapper()
+    )
+    
+def fade_out_wrapper():
+    global is_strip_on, auto_off_timer
+    if not is_strip_on:
+        return
+
+    fade_out()
+    is_strip_on = False
+
+    if auto_off_timer is not None:
+        auto_off_timer.deinit()
+        auto_off_timer = None
 
 def fade_out():
-    """Smooth fade out of the whole LED strip."""
     global np, sensor_01_state, sensor_02_state
     steps = 50  # number of fade steps
     sensor_01_state = False
@@ -141,7 +158,12 @@ def fade_out():
     np.write()
     
 def light_leds_block():
-    global led_state, is_strip_on
+    global led_state, is_strip_on, auto_off_timer
+    
+    if auto_off_timer is not None:
+        auto_off_timer.deinit()
+        auto_off_timer = None
+        
     for stair in range(NUM_STAIRS):
         start = stair * LED_BLOCK
         end = start + LED_BLOCK
@@ -155,7 +177,12 @@ def light_leds_block():
     start_auto_off_timer()
     
 def light_leds_block_reverse():
-    global led_state, is_strip_on
+    global led_state, is_strip_on, auto_off_timer
+    
+    if auto_off_timer is not None:
+        auto_off_timer.deinit()
+        auto_off_timer = None
+        
     for stair in range(NUM_STAIRS-1, -1, -1):
         start = stair * LED_BLOCK
         end = start + LED_BLOCK
@@ -206,7 +233,7 @@ def fade_off_blockwise_reverse():
         np.write()
         time.sleep(ANIMATION_SPEED)
 # ----------
-# ---------- Sensors ----------
+# ---------- Sensors logic ----------
 
 def sensor_01():
     global sensor_01_state, sensor_02_state, is_strip_on, fade_thread_02_running
@@ -241,14 +268,49 @@ def sensor_02():
             light_leds_block_reverse()
 
 
-
 def _delayed_fade(func, delay=20):
     global is_strip_on
     time.sleep(delay)
     func()
     is_strip_on = False
-# ----------
     
-#light_leds_block()
-#time.sleep(0.5)
-#fade_off_blockwise() 
+# ----------    
+# ---------- Sensor devices ----------    
+
+
+def sensor_loop_01():
+    while True:
+        d = sensor_01_device.distance_cm()
+        if d is not None and d <= THRESHOLD:
+            sensor_01()
+        time.sleep(0.2)
+
+def sensor_loop_02():
+    while True:
+        d = sensor_02_device.distance_cm()
+        if d is not None and d <= THRESHOLD:
+            sensor_02()
+        time.sleep(0.2)
+
+#_thread.start_new_thread(sensor_loop_01, ())
+#_thread.start_new_thread(sensor_loop_02, ())
+
+# ----------
+def start():
+    
+    # --- Test LED strip once at startup ---
+    light_leds_block()
+    time.sleep(0.5)
+    fade_off_blockwise()
+
+    # --- start sensor threads ---
+    _thread.start_new_thread(sensor_loop_01, ())
+    _thread.start_new_thread(sensor_loop_02, ())
+
+
+    
+
+
+
+
+
