@@ -197,7 +197,7 @@ def start():
   <tr><td class="label">Stairs count:</td><td class="input"><input type="text" name="stairs" value="{stairs}"></td></tr>
   <tr><td class="label">LED per stair:</td><td class="input"><input type="text" name="block" value="{block}"></td></tr>
   <tr><td class="label">Animation speed (sec):</td><td class="input"><input type="text" name="speed" value="{speed}"></td></tr>
-  <tr><td class="label">Threshold (cm):</td><td class="input"><input type="text" name="threshold" value="{threshold}"></td></tr>
+  <tr><td class="label">Ultrasonic threshold (cm):</td><td class="input"><input type="text" name="threshold" value="{threshold}"></td></tr>
   <tr><td class="label">Sensor delay (sec):</td><td class="input"><input type="text" name="sensor_delay" value="{sensor_delay}"></td></tr>
   <tr><td class="label">Auto-off delay (sec):</td><td class="input"><input type="text" name="auto_off" value="{auto_off}"></td></tr>
   <tr><td colspan="2" class="center"><button class="btn green" type="submit" name="action" value="update">Update Settings</button></td></tr>
@@ -222,7 +222,7 @@ def start():
     <li>Stairs: {stairs}</li>
     <li>LED per stair: {block}</li>
     <li>Animation speed: {speed} sec</li>
-    <li>Threshold: {threshold} cm</li>
+    <li>Ultrasonic threshold (cm): {threshold} cm</li>
     <li>Sensor off delay: {sensor_delay} sec</li>
     <li>Auto-off delay: {auto_off} sec</li>
     <li>Total LEDs: {num_led}</li>
