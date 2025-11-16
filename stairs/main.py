@@ -16,6 +16,5 @@ except Exception as e:
     print("WiFi/Web failed:", e)
     print("Continuing in offline mode.")
 
-# Основной цикл для удержания ESP32 живым
 while True:
     time.sleep(1)
