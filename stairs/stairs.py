@@ -6,6 +6,20 @@ import neopixel
 import json
 from hc_sr04 import HCSR04
 
+"""
+Ultrasonic sensors:
+sensor_01_device:
+    TRIGGER - GPIO5
+    ECHO    - GPIO19
+
+sensor_02_device:
+    TRIGGER - GPIO17
+    ECHO    - GPIO16
+
+LED strip (NeoPixel):
+    PIN_NUM - GPIO18 
+"""
+
 sensor_01_device = HCSR04(trigger_pin=5, echo_pin=19)
 sensor_02_device = HCSR04(trigger_pin=17, echo_pin=16)
 
